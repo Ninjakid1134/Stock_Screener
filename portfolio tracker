@@ -1,0 +1,123 @@
+import datetime
+import os.path
+import time
+import yfinance as yf
+import pandas as pd
+import warnings
+
+
+warnings.simplefilter(action='ignore', category=FutureWarning)
+ticker = ['wit', 'googl', 'karo', 'asr', 'sbs', 'pdd', 'hci']
+stocks = []
+
+for tickers in ticker:
+
+    invested_amount = 1000
+    price = yf.download(tickers, progress=False)['Close'].iloc[-1]
+    price = round(price.iloc[0], 2)
+    amount = invested_amount / price
+    amount = round(amount, 2)
+    stocks.append({'Ticker': tickers,
+                      'Shares': amount,
+                      'Invested Amount': invested_amount,
+                      'PCT Change': 0,
+                      'Current Value': invested_amount})
+
+stocks = pd.DataFrame(stocks)
+
+stocks.to_csv("C:/Users/User/OneDrive/Documents/portfolio_performance.csv", index=False)
+
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+target_time = datetime.time(21,00)
+
+days = 0
+
+last_run = None
+
+while True:
+        now = datetime.datetime.now()
+        date = datetime.datetime.now().date()
+        times = datetime.datetime.now().time()
+        weekdays = now.weekday()
+
+        if weekdays < 5 and times >= target_time and date != last_run:
+            last_run = now.date()
+            days += 1
+
+            if not os.path.exists("C:/Users/User/OneDrive/Documents/portfolio_measure.csv"):
+
+                portfolios = pd.read_csv("C:/Users/User/OneDrive/Documents/portfolio_performance.csv", index_col=None)
+
+                for ticker in portfolios['Ticker']:
+                    movement = yf.download(ticker, progress=False)['Close'].iloc[-2:].pct_change().dropna()
+
+                    try:
+                        change = movement.loc[f'{date}'].iloc[0]
+                    except (IndexError, KeyError, Exception) as e:
+                        if weekdays < 5:
+                            try:
+                                change = movement.iloc[0]
+                            except (IndexError, KeyError, Exception):
+                                change = 0
+                        else:
+                            change = 0
+
+                    portfolios.loc[portfolios['Ticker'] == ticker, 'PCT Change'] += change
+                    portfolios.loc[portfolios['Ticker'] == ticker, 'Current Value'] *= (1 + change)
+
+                portfolios.to_csv("C:/Users/User/OneDrive/Documents/portfolio_measure.csv", index=False)
+                print("--------------------------------------------------------------------------------------------")
+                print(f"Today's date is: {date}")
+                print()
+                print(f'Simulation has been running for {days} days.')
+                print()
+                print(portfolios.to_string())
+                print()
+                print(f'Total % return is: {round(portfolios['PCT Change'].sum(), 3)}')
+                print()
+                print(f'Your total invested amount is : {round(portfolios['Invested Amount'].sum(), 2)}')
+                print()
+                print(f'Current value of portfolio is : {round(portfolios['Current Value'].sum(), 2)}')
+                print("--------------------------------------------------------------------------------------------")
+
+            else:
+                portfolio = pd.read_csv("C:/Users/User/OneDrive/Documents/portfolio_measure.csv", index_col=None)
+
+                for ticker in portfolio['Ticker']:
+                    movement = yf.download(ticker, progress=False)['Close'].iloc[-2:].pct_change().dropna()
+
+                    try:
+                        change = movement.loc[f'{date}'].iloc[0]
+                    except (IndexError, KeyError, Exception) as e:
+                        if weekdays < 5:
+                            try:
+                                change = movement.iloc[0]
+                            except (IndexError, KeyError, Exception):
+                                change = 0
+                        else:
+                            change = 0
+
+
+
+                    portfolio.loc[portfolio['Ticker'] == ticker, 'PCT Change'] += change
+                    portfolio.loc[portfolio['Ticker'] == ticker, 'Current Value'] *= (1 + change)
+
+                portfolio.to_csv("C:/Users/User/OneDrive/Documents/portfolio_measure.csv", index=False)
+                print("--------------------------------------------------------------------------------------------")
+                print(f"Today's date is: {date}")
+                print()
+                print(f'Simulation has been running for {days} days.')
+                print()
+                print(portfolio.to_string())
+                print()
+                print(f'Total % return is: {round(portfolio['PCT Change'].sum(), 3)}')
+                print()
+                print(f'Your total invested amount is : {round(portfolio['Invested Amount'].sum(), 2)}')
+                print()
+                print(f'Current value of portfolio is : {round(portfolio['Current Value'].sum(), 2)}')
+                print("--------------------------------------------------------------------------------------------")
+
+
+
+        time.sleep(7200)
